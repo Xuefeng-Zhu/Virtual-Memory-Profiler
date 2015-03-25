@@ -25,6 +25,7 @@ MODULE_DESCRIPTION("CS-423 MP3");
 #define FILE_NAME "status"
 
 #define NPAGES 128
+#define SAMPLE_SIZE 16
 
 /* The proc directory entry */
 static struct proc_dir_entry *pdir_mp3;
@@ -44,6 +45,9 @@ static struct delayed_work *monitor_work;
 
 /* Keeps track of number of tasks in list */
 static int num_jobs;
+
+/* Keeps track of the number of samples */
+static int num_samples;
 
 /* A buffer allocated for profiler data */
 static char *prof_buffer;
@@ -187,11 +191,33 @@ void unregister_handler(unsigned long pid) {
 
 /* Callback for the work function to monitor jobs */
 void monitor_wq_function(struct work_struct *work) {
+   struct list_head *head;
+   struct mp3_pcb *tmp;
+   unsigned long min_flt, maj_flt, utime, stime, util;
+   unsigned long t_min_flt = 0, t_maj_flt = 0, t_util = 0;
+
+   list_for_each(head, &mp3_pcb.list) {
+      tmp = list_entry(head, struct mp3_pcb, list);
+      if(get_cpu_use(tmp->pid, &min_flt, &maj_flt, &utime, &stime) != 0) {
+         util = (utime + stime) / 2;
+         t_min_flt += min_flt;
+         t_maj_flt += maj_flt;
+         t_util += util;
+      }
+   }
+
+   num_samples = (num_samples + 1) % 1200;
+   prof_buffer[num_samples * SAMPLE_SIZE + 0] = jiffies;
+   prof_buffer[num_samples * SAMPLE_SIZE + 4] = t_min_flt;
+   prof_buffer[num_samples * SAMPLE_SIZE + 8] = t_maj_flt;
+   prof_buffer[num_samples * SAMPLE_SIZE + 12] = t_util;
+
+   schedule_delayed_work(monitor_work, msecs_to_jiffies(1000 / 20));
+
    /* Implement */
    #ifdef DEBUG
    printk("WORKQUEUE FUNCTION CALLED\n");
    #endif
-   schedule_delayed_work(monitor_work, msecs_to_jiffies(50));
 }
 
 struct mp3_pcb* get_pcb_from_pid(unsigned int pid) {
