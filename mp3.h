@@ -6,6 +6,9 @@ struct mp3_pcb {
    struct list_head list; /* Kernel's list structure */
    struct task_struct* linux_task;
    unsigned long pid;
+   unsigned long utilization;
+   unsigned long major;
+   unsigned long minor;
 };
 
 /* Helper function to get a pcb entry from a pid */
@@ -32,7 +35,10 @@ void register_handler(unsigned long pid);
 /* Helper function to deregister a task */
 void unregister_handler(unsigned long pid);
 
-/* Called when module is loaded */
+/* Callback for the work function to monitor jobs */
+void monitor_wq_function(struct work_struct *work);
+
+    /* Called when module is loaded */
 int __init mp3_init(void);
 
 /* Called when module is unloaded */

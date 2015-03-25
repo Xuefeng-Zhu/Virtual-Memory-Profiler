@@ -10,6 +10,7 @@
 #include <linux/spinlock.h>
 #include <linux/sched.h>
 #include <linux/kthread.h>
+#include <linux/mm.h>
 
 #include "mp3_given.h"
 #include "mp3.h"
@@ -23,6 +24,8 @@ MODULE_DESCRIPTION("CS-423 MP3");
 #define DIR_NAME "mp3"
 #define FILE_NAME "status"
 
+#define NPAGES 128
+
 /* The proc directory entry */
 static struct proc_dir_entry *pdir_mp3;
 
@@ -35,6 +38,15 @@ static unsigned long lock_flag;
 
 /* Cache for mp3_task_struct slab allocation */
 static struct kmem_cache *task_cache;
+
+/* Work queue to perform job monitoring */
+static struct workqueue_struct *monitor_wq;
+
+/* Keeps track of number of tasks in list */
+static int num_jobs;
+
+/* A buffer allocated for profiler data */
+static char *prof_buffer;
 
 /* Helper function to delete the linked list */
 void delete_mp3_pcb(void) {
@@ -92,7 +104,7 @@ ssize_t read_proc(struct file *filp, char *user, size_t count, loff_t *offset)
    return pos;
 }
 
-/* Occurs when a user runs ./process > /proc/mp2/status
+/* Occurs when a user runs ./process > /proc/mp3/status
    Input format should either be: "R PID"
                                   "U PID"
 */
@@ -123,6 +135,7 @@ ssize_t write_proc(struct file *filp, const char *user, size_t count, loff_t *of
 /* Helper function to register a task */
 void register_handler(unsigned long pid) {
    struct mp3_pcb *temp_task;
+   struct work_struct *temp_work;
 
    temp_task = kmem_cache_alloc(task_cache, GFP_KERNEL);
    temp_task->pid = pid;
@@ -131,7 +144,15 @@ void register_handler(unsigned long pid) {
    /* Add a task entry */
    spin_lock_irqsave(&list_lock, lock_flag);
    list_add(&(temp_task->list), &(mp3_pcb.list));
+   num_jobs++;
    spin_unlock_irqrestore(&list_lock, lock_flag);
+
+   if(num_jobs == 1) {
+      monitor_wq = create_workqueue("monitor_wq");
+      temp_work = (struct work_struct*)kmalloc(sizeof(struct work_struct), GFP_KERNEL);
+      INIT_WORK(temp_work, monitor_wq_function);
+      queue_work(monitor_wq, temp_work);
+   }
 
    #ifndef DEBUG
    printk("PROCESS REGISTERED: %lu\n", temp_task->pid);
@@ -148,14 +169,28 @@ void unregister_handler(unsigned long pid) {
       tmp = list_entry(head, struct mp3_pcb, list);
       if(tmp->pid == pid) {
          list_del(head);
+         num_jobs--;
          kmem_cache_free(task_cache, tmp);
          break;
       }
    }
    spin_unlock_irqrestore(&list_lock, lock_flag);
 
+   if(num_jobs == 0) {
+      flush_workqueue(monitor_wq);
+      destroy_workqueue(monitor_wq);
+   }
+
    #ifdef DEBUG
    printk("PROCESS DEREGISTERED: %lu\n", pid);
+   #endif
+}
+
+/* Callback for the work function to monitor jobs */
+void monitor_wq_function(struct work_struct *work) {
+   /* Implement */
+   #ifdef DEBUG
+   printk("WORKQUEUE FUNCTION CALLED\n");
    #endif
 }
 
@@ -176,9 +211,14 @@ struct mp3_pcb* get_pcb_from_pid(unsigned int pid) {
 /* Called when module is loaded */
 int __init mp3_init(void)
 {
-   #ifdef DEBUG
-   printk(KERN_ALERT "MP3 MODULE LOADING\n");
-   #endif
+   int i;
+
+   num_jobs = 0;
+
+   prof_buffer = vmalloc(NPAGES * PAGE_SIZE);
+   for(i = 0; i < NPAGES * PAGE_SIZE; i+=PAGE_SIZE) {
+      SetPageReserved(vmalloc_to_page((void *)(((unsigned long)prof_buffer) + i)));
+   }
 
    INIT_LIST_HEAD(&mp3_pcb.list);
    create_mp3_proc_files();
@@ -189,6 +229,8 @@ int __init mp3_init(void)
 
    spin_lock_init(&list_lock);
 
+   monitor_wq = create_workqueue("monitor_wq");
+
    printk(KERN_ALERT "MP3 MODULE LOADED\n");
    return 0;
 }
@@ -196,14 +238,14 @@ int __init mp3_init(void)
 /* Called when module is unloaded */
 void __exit mp3_exit(void)
 {
-   #ifdef DEBUG
-   printk(KERN_ALERT "MP3 MODULE UNLOADING\n");
-   #endif
-
    // Cleans up the file entries in /proc and the data structures
+   flush_workqueue(monitor_wq);
+   destroy_workqueue(monitor_wq);
+
    kmem_cache_destroy(task_cache);
    delete_mp3_proc_files();
    delete_mp3_pcb();
+   vfree(prof_buffer);
 
    printk(KERN_ALERT "MP3 MODULE UNLOADED\n");
 }
