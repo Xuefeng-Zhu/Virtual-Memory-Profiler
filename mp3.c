@@ -39,8 +39,8 @@ static unsigned long lock_flag;
 /* Cache for mp3_task_struct slab allocation */
 static struct kmem_cache *task_cache;
 
-/* Work queue to perform job monitoring */
-static struct workqueue_struct *monitor_wq;
+/* Work task to perform job monitoring */
+static struct delayed_work *monitor_work;
 
 /* Keeps track of number of tasks in list */
 static int num_jobs;
@@ -56,6 +56,7 @@ void delete_mp3_pcb(void) {
    list_for_each_safe(head, next, &mp3_pcb.list) {
       tmp = list_entry(head, struct mp3_pcb, list);
       list_del(head);
+      kmem_cache_free(task_cache, tmp);
    }
 }
 
@@ -135,7 +136,6 @@ ssize_t write_proc(struct file *filp, const char *user, size_t count, loff_t *of
 /* Helper function to register a task */
 void register_handler(unsigned long pid) {
    struct mp3_pcb *temp_task;
-   struct work_struct *temp_work;
 
    temp_task = kmem_cache_alloc(task_cache, GFP_KERNEL);
    temp_task->pid = pid;
@@ -148,10 +148,9 @@ void register_handler(unsigned long pid) {
    spin_unlock_irqrestore(&list_lock, lock_flag);
 
    if(num_jobs == 1) {
-      monitor_wq = create_workqueue("monitor_wq");
-      temp_work = (struct work_struct*)kmalloc(sizeof(struct work_struct), GFP_KERNEL);
-      INIT_WORK(temp_work, monitor_wq_function);
-      queue_work(monitor_wq, temp_work);
+      monitor_work = (struct delayed_work*)kmalloc(sizeof(struct delayed_work), GFP_KERNEL);
+      INIT_DELAYED_WORK(monitor_work, monitor_wq_function);
+      schedule_delayed_work(monitor_work, msecs_to_jiffies(0));
    }
 
    #ifndef DEBUG
@@ -177,8 +176,8 @@ void unregister_handler(unsigned long pid) {
    spin_unlock_irqrestore(&list_lock, lock_flag);
 
    if(num_jobs == 0) {
-      flush_workqueue(monitor_wq);
-      destroy_workqueue(monitor_wq);
+      cancel_delayed_work(monitor_work);
+      kfree(monitor_work);
    }
 
    #ifdef DEBUG
@@ -192,6 +191,7 @@ void monitor_wq_function(struct work_struct *work) {
    #ifdef DEBUG
    printk("WORKQUEUE FUNCTION CALLED\n");
    #endif
+   schedule_delayed_work(monitor_work, msecs_to_jiffies(50));
 }
 
 struct mp3_pcb* get_pcb_from_pid(unsigned int pid) {
@@ -211,14 +211,14 @@ struct mp3_pcb* get_pcb_from_pid(unsigned int pid) {
 /* Called when module is loaded */
 int __init mp3_init(void)
 {
-   int i;
+   //int i;
 
    num_jobs = 0;
 
    prof_buffer = vmalloc(NPAGES * PAGE_SIZE);
-   for(i = 0; i < NPAGES * PAGE_SIZE; i+=PAGE_SIZE) {
-      SetPageReserved(vmalloc_to_page((void *)(((unsigned long)prof_buffer) + i)));
-   }
+//   for(i = 0; i < NPAGES * PAGE_SIZE; i+=PAGE_SIZE) {
+//      SetPageReserved(vmalloc_to_page((void *)(((unsigned long)prof_buffer) + i)));
+//   }
 
    INIT_LIST_HEAD(&mp3_pcb.list);
    create_mp3_proc_files();
@@ -229,8 +229,6 @@ int __init mp3_init(void)
 
    spin_lock_init(&list_lock);
 
-   monitor_wq = create_workqueue("monitor_wq");
-
    printk(KERN_ALERT "MP3 MODULE LOADED\n");
    return 0;
 }
@@ -239,8 +237,9 @@ int __init mp3_init(void)
 void __exit mp3_exit(void)
 {
    // Cleans up the file entries in /proc and the data structures
-   flush_workqueue(monitor_wq);
-   destroy_workqueue(monitor_wq);
+   if(num_jobs > 0) {
+      cancel_delayed_work(monitor_work);
+   }
 
    kmem_cache_destroy(task_cache);
    delete_mp3_proc_files();
