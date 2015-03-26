@@ -1,7 +1,8 @@
-erapp
+userapp
 *.ko
 *.mod.*
 *.o
 modules.order
 Module.symvers
 *.cmd
+.tmp_versions
