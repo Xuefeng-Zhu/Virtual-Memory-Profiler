@@ -1,0 +1,7 @@
+erapp
+*.ko
+*.mod.*
+*.o
+modules.order
+Module.symvers
+*.cmd
