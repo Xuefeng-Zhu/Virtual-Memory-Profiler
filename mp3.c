@@ -242,6 +242,8 @@ int mmap_drive (struct file *file, struct vm_area_struct *vma){
 
    pfn = vmalloc_to_pfn(prof_buffer);
    remap_pfn_range(vma, vma->vm_start, pfn, PAGE_SIZE, PAGE_SHARED);
+
+   return 0;
 }
 
 
