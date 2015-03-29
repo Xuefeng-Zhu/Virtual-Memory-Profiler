@@ -232,7 +232,7 @@ int open_drive(struct inode *i, struct file *f){
 }
 
 /* Drive close op */
-int close_drive(struct inode *i, struct file *f){
+int release_drive(struct inode *i, struct file *f){
    return 0;
 }
 
