@@ -45,10 +45,13 @@ int __init mp3_init(void);
 void __exit mp3_exit(void);
 
 /* Drive open op */
-int open_drive(struct inode *i, struct file *f);
+int open_drive(struct inode *inode, struct file *file);
 
 /* Drive release op */
-int release_drive(struct inode *i, struct file *f);
+int release_drive(struct inode *inode, struct file *file);
+
+/* Drive mmap op */
+int mmap_drive (struct file *file, struct vm_area_struct *vma);
 
 /* Available file operations for mp3/status */
 struct file_operations proc_fops = {
@@ -58,8 +61,8 @@ struct file_operations proc_fops = {
 
 struct file_operations drive_fops = {
 	open: open_drive,
-	release: release_drive
-	// mmap: mmap_drive
+	release: release_drive,
+	mmap: mmap_drive
 };
 
 #endif

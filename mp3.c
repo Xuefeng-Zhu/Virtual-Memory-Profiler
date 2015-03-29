@@ -227,13 +227,21 @@ void monitor_wq_function(struct work_struct *work) {
 }
 
 /* Drive open op */
-int open_drive(struct inode *i, struct file *f){
+int open_drive(struct inode *inode, struct file *file){
    return 0;
 }
 
 /* Drive close op */
-int release_drive(struct inode *i, struct file *f){
+int release_drive(struct inode *inode, struct file *file){
    return 0;
+}
+
+/* Drive mmap op */
+int mmap_drive (struct file *file, struct vm_area_struct *vma){
+   unsigned long pfn;
+
+   pfn = vmalloc_to_pfn(prof_buffer);
+   remap_pfn_range(vma, vma->vm_start, pfn, PAGE_SIZE, PAGE_SHARED);
 }
 
 
