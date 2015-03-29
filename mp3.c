@@ -11,6 +11,7 @@
 #include <linux/sched.h>
 #include <linux/kthread.h>
 #include <linux/mm.h>
+#include <linux/cdev.h>
 
 #include "mp3_given.h"
 #include "mp3.h"
@@ -51,6 +52,11 @@ static int num_samples;
 
 /* A buffer allocated for profiler data */
 static char *prof_buffer;
+
+/* The character driver */
+static dev_t node_number;
+static struct cdev node_cdev;
+
 
 /* Helper function to delete the linked list */
 void delete_mp3_pcb(void) {
@@ -220,31 +226,23 @@ void monitor_wq_function(struct work_struct *work) {
    #endif
 }
 
-struct mp3_pcb* get_pcb_from_pid(unsigned int pid) {
-   struct list_head *head;
-   struct mp3_pcb *tmp;
-
-   list_for_each(head, &mp3_pcb.list) {
-      tmp = list_entry(head, struct mp3_pcb, list);
-      if(tmp->pid == pid) {
-          return tmp;
-      }
-   }
-
-   return NULL;
+/* Drive open op */
+int open_drive(struct inode *i, struct file *f){
+   return 0;
 }
+
+/* Drive close op */
+int close_drive(struct inode *i, struct file *f){
+   return 0;
+}
+
 
 /* Called when module is loaded */
 int __init mp3_init(void)
 {
-   //int i;
-
    num_jobs = 0;
 
    prof_buffer = vmalloc(NPAGES * PAGE_SIZE);
-//   for(i = 0; i < NPAGES * PAGE_SIZE; i+=PAGE_SIZE) {
-//      SetPageReserved(vmalloc_to_page((void *)(((unsigned long)prof_buffer) + i)));
-//   }
 
    INIT_LIST_HEAD(&mp3_pcb.list);
    create_mp3_proc_files();
@@ -254,6 +252,10 @@ int __init mp3_init(void)
                                   NULL);
 
    spin_lock_init(&list_lock);
+
+   alloc_chrdev_region(&node_number, 300, 1, "node");
+   cdev_init(&node_cdev, &drive_fops);
+   cdev_add(&node_cdev, node_number, 1);
 
    printk(KERN_ALERT "MP3 MODULE LOADED\n");
    return 0;
@@ -271,6 +273,9 @@ void __exit mp3_exit(void)
    delete_mp3_proc_files();
    delete_mp3_pcb();
    vfree(prof_buffer);
+
+   cdev_del(&node_cdev);
+   unregister_chrdev_region(node_number, 1);
 
    printk(KERN_ALERT "MP3 MODULE UNLOADED\n");
 }

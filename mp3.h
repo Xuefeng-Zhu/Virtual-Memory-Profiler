@@ -38,16 +38,28 @@ void unregister_handler(unsigned long pid);
 /* Callback for the work function to monitor jobs */
 void monitor_wq_function(struct work_struct *work);
 
-    /* Called when module is loaded */
+/* Called when module is loaded */
 int __init mp3_init(void);
 
 /* Called when module is unloaded */
 void __exit mp3_exit(void);
 
+/* Drive open op */
+int open_drive(struct inode *i, struct file *f);
+
+/* Drive close op */
+int close_drive(struct inode *i, struct file *f);
+
 /* Available file operations for mp3/status */
 struct file_operations proc_fops = {
    read: read_proc,
    write: write_proc
+};
+
+struct file_operations drive_fops = {
+	open: open_drive,
+	close: close_drive
+	// mmap: mmap_drive
 };
 
 #endif
