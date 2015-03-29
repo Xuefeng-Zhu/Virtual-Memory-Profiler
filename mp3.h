@@ -58,7 +58,7 @@ struct file_operations proc_fops = {
 
 struct file_operations drive_fops = {
 	open: open_drive,
-	release: close_drive
+	release: release_drive
 	// mmap: mmap_drive
 };
 

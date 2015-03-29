@@ -253,7 +253,7 @@ int __init mp3_init(void)
 
    spin_lock_init(&list_lock);
 
-   alloc_chrdev_region(&node_number, 300, 1, "node");
+   alloc_chrdev_region(&node_number, 0, 1, "node");
    cdev_init(&node_cdev, &drive_fops);
    cdev_add(&node_cdev, node_number, 1);
 
