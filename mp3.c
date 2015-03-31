@@ -205,18 +205,18 @@ void monitor_wq_function(struct work_struct *work) {
    list_for_each(head, &mp3_pcb.list) {
       tmp = list_entry(head, struct mp3_pcb, list);
       if(get_cpu_use(tmp->pid, &min_flt, &maj_flt, &utime, &stime) != 0) {
-         util = (utime + stime) / 2;
+         util = (utime + stime) / jiffies;
          t_min_flt += min_flt;
          t_maj_flt += maj_flt;
          t_util += util;
       }
    }
 
-   num_samples = (num_samples + 1) % 1200;
    prof_buffer[num_samples * SAMPLE_SIZE + 0] = jiffies;
    prof_buffer[num_samples * SAMPLE_SIZE + 4] = t_min_flt;
    prof_buffer[num_samples * SAMPLE_SIZE + 8] = t_maj_flt;
    prof_buffer[num_samples * SAMPLE_SIZE + 12] = t_util;
+   num_samples = (num_samples + 1) % 12000;
 
    schedule_delayed_work(monitor_work, msecs_to_jiffies(1000 / 20));
 
@@ -251,6 +251,7 @@ int mmap_drive (struct file *file, struct vm_area_struct *vma){
 int __init mp3_init(void)
 {
    num_jobs = 0;
+   num_samples = 0;
 
    prof_buffer = vmalloc(NPAGES * PAGE_SIZE);
 
