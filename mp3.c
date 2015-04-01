@@ -204,7 +204,7 @@ void monitor_wq_function(struct work_struct *work) {
 
    list_for_each(head, &mp3_pcb.list) {
       tmp = list_entry(head, struct mp3_pcb, list);
-      if(get_cpu_use(tmp->pid, &min_flt, &maj_flt, &utime, &stime) != 0) {
+      if(get_cpu_use(tmp->pid, &min_flt, &maj_flt, &utime, &stime) == 0) {
          util = (utime + stime) / jiffies;
          t_min_flt += min_flt;
          t_maj_flt += maj_flt;
@@ -241,7 +241,7 @@ int mmap_drive (struct file *file, struct vm_area_struct *vma){
    unsigned long pfn;
 
    pfn = vmalloc_to_pfn(prof_buffer);
-   remap_pfn_range(vma, vma->vm_start, pfn, PAGE_SIZE, PAGE_SHARED);
+   remap_pfn_range(vma, vma->vm_start, pfn, NPAGES * PAGE_SIZE, PAGE_SHARED);
 
    return 0;
 }
