@@ -209,6 +209,9 @@ void monitor_wq_function(struct work_struct *work) {
          t_min_flt += min_flt;
          t_maj_flt += maj_flt;
          t_util += util;
+   #ifdef DEBUG
+   printk("%lu %lu %lu\n", min_flt, maj_flt, util);
+   #endif
       }
    }
 
@@ -222,6 +225,7 @@ void monitor_wq_function(struct work_struct *work) {
 
    /* Implement */
    #ifdef DEBUG
+   printk("PROFILE %lu %lu %lu\n", t_min_flt, t_maj_flt, t_util);
    printk("WORKQUEUE FUNCTION CALLED\n");
    #endif
 }
@@ -239,9 +243,12 @@ int release_drive(struct inode *inode, struct file *file){
 /* Drive mmap op */
 int mmap_drive (struct file *file, struct vm_area_struct *vma){
    unsigned long pfn;
+   int i;
 
-   pfn = vmalloc_to_pfn(prof_buffer);
-   remap_pfn_range(vma, vma->vm_start, pfn, NPAGES * PAGE_SIZE, PAGE_SHARED);
+   for (i = 0; i < NPAGES; i++){
+       pfn = vmalloc_to_pfn(prof_buffer + i*PAGE_SIZE);
+       remap_pfn_range(vma, vma->vm_start + i*PAGE_SIZE, pfn, PAGE_SIZE, PAGE_SHARED);
+   }
 
    return 0;
 }
