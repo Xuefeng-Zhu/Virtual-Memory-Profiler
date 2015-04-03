@@ -200,12 +200,12 @@ void monitor_wq_function(struct work_struct *work) {
    struct list_head *head;
    struct mp3_pcb *tmp;
    unsigned long min_flt, maj_flt, utime, stime, util;
-   unsigned long t_min_flt = 0, t_maj_flt = 0, t_util = 0;
+   long t_min_flt = 0, t_maj_flt = 0, t_util = 0;
 
    list_for_each(head, &mp3_pcb.list) {
       tmp = list_entry(head, struct mp3_pcb, list);
       if(get_cpu_use(tmp->pid, &min_flt, &maj_flt, &utime, &stime) == 0) {
-         util = (utime + stime) / jiffies;
+         util = (cputime_to_jiffies(utime) + cputime_to_jiffies(stime)) / jiffies;
          t_min_flt += min_flt;
          t_maj_flt += maj_flt;
          t_util += util;
@@ -215,7 +215,7 @@ void monitor_wq_function(struct work_struct *work) {
       }
    }
 
-   prof_buffer[num_samples * SAMPLE_SIZE + 0] = jiffies;
+   prof_buffer[num_samples * SAMPLE_SIZE + 0] = (long)jiffies;
    prof_buffer[num_samples * SAMPLE_SIZE + 4] = t_min_flt;
    prof_buffer[num_samples * SAMPLE_SIZE + 8] = t_maj_flt;
    prof_buffer[num_samples * SAMPLE_SIZE + 12] = t_util;
