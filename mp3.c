@@ -26,7 +26,7 @@ MODULE_DESCRIPTION("CS-423 MP3");
 #define FILE_NAME "status"
 
 #define NPAGES 128
-#define SAMPLE_SIZE 16
+#define SAMPLE_SIZE 4
 
 /* The proc directory entry */
 static struct proc_dir_entry *pdir_mp3;
@@ -51,7 +51,7 @@ static int num_jobs;
 static int num_samples;
 
 /* A buffer allocated for profiler data */
-static char *prof_buffer;
+static long *prof_buffer;
 
 /* The character driver */
 static dev_t node_number;
@@ -216,9 +216,9 @@ void monitor_wq_function(struct work_struct *work) {
    }
 
    prof_buffer[num_samples * SAMPLE_SIZE + 0] = (long)jiffies;
-   prof_buffer[num_samples * SAMPLE_SIZE + 4] = t_min_flt;
-   prof_buffer[num_samples * SAMPLE_SIZE + 8] = t_maj_flt;
-   prof_buffer[num_samples * SAMPLE_SIZE + 12] = t_util;
+   prof_buffer[num_samples * SAMPLE_SIZE + 1] = t_min_flt;
+   prof_buffer[num_samples * SAMPLE_SIZE + 2] = t_maj_flt;
+   prof_buffer[num_samples * SAMPLE_SIZE + 3] = t_util;
    num_samples = (num_samples + 1) % 12000;
 
    schedule_delayed_work(monitor_work, msecs_to_jiffies(1000 / 20));
@@ -246,7 +246,7 @@ int mmap_drive (struct file *file, struct vm_area_struct *vma){
    int i;
 
    for (i = 0; i < NPAGES; i++){
-       pfn = vmalloc_to_pfn(prof_buffer + i*PAGE_SIZE);
+       pfn = vmalloc_to_pfn((char *)prof_buffer + i*PAGE_SIZE);
        remap_pfn_range(vma, vma->vm_start + i*PAGE_SIZE, pfn, PAGE_SIZE, PAGE_SHARED);
    }
 
@@ -260,7 +260,7 @@ int __init mp3_init(void)
    num_jobs = 0;
    num_samples = 0;
 
-   prof_buffer = vmalloc(NPAGES * PAGE_SIZE);
+   prof_buffer = (long *)vmalloc(NPAGES * PAGE_SIZE);
 
    INIT_LIST_HEAD(&mp3_pcb.list);
    create_mp3_proc_files();
@@ -273,6 +273,7 @@ int __init mp3_init(void)
 
    alloc_chrdev_region(&node_number, 0, 1, "node");
    cdev_init(&node_cdev, &drive_fops);
+   node_cdev.owner=THIS_MODULE;
    cdev_add(&node_cdev, node_number, 1);
 
    printk(KERN_ALERT "MP3 MODULE LOADED\n");
