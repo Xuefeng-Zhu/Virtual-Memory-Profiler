@@ -205,12 +205,12 @@ void monitor_wq_function(struct work_struct *work) {
    list_for_each(head, &mp3_pcb.list) {
       tmp = list_entry(head, struct mp3_pcb, list);
       if(get_cpu_use(tmp->pid, &min_flt, &maj_flt, &utime, &stime) == 0) {
-         util = (cputime_to_jiffies(utime) + cputime_to_jiffies(stime)) / jiffies;
+         util = 100 * (cputime_to_jiffies(utime) + cputime_to_jiffies(stime)) / msecs_to_jiffies(1000 / 20);
          t_min_flt += min_flt;
          t_maj_flt += maj_flt;
          t_util += util;
    #ifdef DEBUG
-   printk("%lu %lu %lu\n", min_flt, maj_flt, util);
+   printk("%lu %lu %lu\n", utime, stime, util);
    #endif
       }
    }
