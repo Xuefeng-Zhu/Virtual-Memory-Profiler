@@ -3,7 +3,7 @@ from bokeh.plotting import figure, output_file, show
 if __name__ == '__main__':
     output_file("case2_n11.html", title="Case 2 for 11 Process")
 
-    f = open("profile_n11.data")
+    f = open("profile_n_11.data")
     data = f.readlines()[:-1]
 
     start = int(data[0].split()[0])
