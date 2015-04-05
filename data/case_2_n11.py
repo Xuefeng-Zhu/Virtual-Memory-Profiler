@@ -17,7 +17,7 @@ if __name__ == '__main__':
         time = int(tmp[0]) - start
         if time >= 0:
             x.append(total_time)
-            total_time += 20
+            total_time += 50
             total_util += int(tmp[3])
             y.append(total_util)
         else:
