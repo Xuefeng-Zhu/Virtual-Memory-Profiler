@@ -3,7 +3,7 @@ from bokeh.plotting import figure, output_file, show
 if __name__ == '__main__':
     output_file("case2_n11.html", title="Case 2 for 11 Process")
 
-    f = open("profile_n11.data")
+    f = open("profile_n_11.data")
     data = f.readlines()[:-1]
 
     start = int(data[0].split()[0])
@@ -17,7 +17,7 @@ if __name__ == '__main__':
         time = int(tmp[0]) - start
         if time >= 0:
             x.append(total_time)
-            total_time += 20
+            total_time += 50
             total_util += int(tmp[3])
             y.append(total_util)
         else:

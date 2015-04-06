@@ -17,8 +17,8 @@ if __name__ == '__main__':
         time = int(tmp[0]) - start
         if time >= 0:
             x.append(total_time)
-            total_time += 20
-            total_fault += int(tmp[1])
+            total_time += 50
+            total_fault += int(tmp[2])
             y.append(total_fault)
         else:
             break
